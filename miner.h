@@ -122,6 +122,23 @@ static inline void le32enc(void *pp, uint32_t x)
 }
 #endif
 
+#if !HAVE_DECL_BE16DEC
+static inline uint16_t be16dec(const void *pp)
+{
+	const uint8_t *p = (uint8_t const *)pp;
+	return ((uint16_t)(p[1]) + ((uint16_t)(p[0]) << 8));
+}
+#endif
+
+#if !HAVE_DECL_BE16ENC
+static inline void be16enc(void *pp, uint16_t x)
+{
+	uint8_t *p = (uint8_t *)pp;
+	p[1] = x & 0xff;
+	p[0] = (x >> 8) & 0xff;
+}
+#endif
+
 #if !HAVE_DECL_LE16DEC
 static inline uint16_t le16dec(const void *pp)
 {

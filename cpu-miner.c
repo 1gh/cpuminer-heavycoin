@@ -130,7 +130,7 @@ int opt_timeout = 270;
 static int opt_scantime = 5;
 static json_t *opt_config;
 static const bool opt_time = true;
-static enum sha256_algos opt_algo = ALGO_SCRYPT;
+static enum sha256_algos opt_algo = ALGO_HEAVY;
 static int opt_n_threads;
 static bool opt_trust_pool = false;
 static uint16_t opt_vote = 9999;
@@ -299,8 +299,7 @@ static bool work_decode(const json_t *val, struct work *work)
 		goto err_out;
 	}
 	if (unlikely(!jobj_binary(val, "maxvote", &work->maxvote, sizeof(work->maxvote)))) {
-		applog(LOG_ERR, "JSON inval target");
-		goto err_out;
+		work->maxvote = 1024;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(work->data); i++)
@@ -361,18 +360,21 @@ static bool submit_upstream_work(CURL *curl, struct work *work)
 
 		le32enc(&ntime, work->data[17]);
 		le32enc(&nonce, work->data[19]);
-		le16enc(&nvote, *((uint16_t*)&work->data[20]));
-
-		if (nvote != opt_vote)
-			applog(LOG_ERR, "submit_upstream_work nvote (%u) != opt_vote (%u)", nvote, opt_vote);
+		be16enc(&nvote, *((uint16_t*)&work->data[20]));
 
 		ntimestr = bin2hex((const unsigned char *)(&ntime), 4);
 		noncestr = bin2hex((const unsigned char *)(&nonce), 4);
 		xnonce2str = bin2hex(work->xnonce2, work->xnonce2_len);
 		nvotestr = bin2hex((const unsigned char *)(&nvote), 2);
-		sprintf(s,
-			"{\"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\":4}",
-			rpc_user, work->job_id, xnonce2str, ntimestr, noncestr, nvotestr);
+		if (opt_algo == ALGO_HEAVY) {
+			sprintf(s,
+				"{\"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\":4}",
+				rpc_user, work->job_id, xnonce2str, ntimestr, noncestr, nvotestr);
+		} else {
+			sprintf(s,
+				"{\"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\":4}",
+				rpc_user, work->job_id, xnonce2str, ntimestr, noncestr);
+		}
 		free(ntimestr);
 		free(noncestr);
 		free(xnonce2str);
@@ -678,10 +680,12 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 	work->data[31] = 0x00000280;
 
 	// HeavyCoin
-	work->maxvote = 1024;
-	uint16_t *ext = (uint16_t *)&work->data[20];
-	ext[0] = opt_vote;
-	ext[1] = le16dec(sctx->job.nreward);
+	if (opt_algo == ALGO_HEAVY) {
+		work->maxvote = 1024;
+		uint16_t *ext = (uint16_t *)&work->data[20];
+		ext[0] = opt_vote;
+		ext[1] = be16dec(sctx->job.nreward);
+	}
 	//
 
 	pthread_mutex_unlock(&sctx->work_lock);
