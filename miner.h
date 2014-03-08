@@ -130,6 +130,15 @@ static inline uint16_t le16dec(const void *pp)
 }
 #endif
 
+#if !HAVE_DECL_LE16ENC
+static inline void le16enc(void *pp, uint16_t x)
+{
+	uint8_t *p = (uint8_t *)pp;
+	p[0] = x & 0xff;
+	p[1] = (x >> 8) & 0xff;
+}
+#endif
+
 #if JANSSON_MAJOR_VERSION >= 2
 #define JSON_LOADS(str, err_ptr) json_loads((str), 0, (err_ptr))
 #else

@@ -356,19 +356,27 @@ static bool submit_upstream_work(CURL *curl, struct work *work)
 
 	if (have_stratum) {
 		uint32_t ntime, nonce;
-		char *ntimestr, *noncestr, *xnonce2str;
+		uint16_t nvote;
+		char *ntimestr, *noncestr, *xnonce2str, *nvotestr;
 
 		le32enc(&ntime, work->data[17]);
 		le32enc(&nonce, work->data[19]);
+		le16enc(&nvote, *((uint16_t*)&work->data[20]));
+
+		if (nvote != opt_vote)
+			applog(LOG_ERR, "submit_upstream_work nvote (%u) != opt_vote (%u)", nvote, opt_vote);
+
 		ntimestr = bin2hex((const unsigned char *)(&ntime), 4);
 		noncestr = bin2hex((const unsigned char *)(&nonce), 4);
 		xnonce2str = bin2hex(work->xnonce2, work->xnonce2_len);
+		nvotestr = bin2hex((const unsigned char *)(&nvote), 2);
 		sprintf(s,
-			"{\"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\":4}",
-			rpc_user, work->job_id, xnonce2str, ntimestr, noncestr);
+			"{\"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\":4}",
+			rpc_user, work->job_id, xnonce2str, ntimestr, noncestr, nvotestr);
 		free(ntimestr);
 		free(noncestr);
 		free(xnonce2str);
+		free(nvotestr);
 
 		if (unlikely(!stratum_send_line(&stratum, s))) {
 			applog(LOG_ERR, "submit_upstream_work stratum_send_line failed");
