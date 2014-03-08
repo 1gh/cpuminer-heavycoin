@@ -662,6 +662,13 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 	work->data[20] = 0x80000000;
 	work->data[31] = 0x00000280;
 
+	// HeavyCoin
+	work->maxvote = 1024;
+	uint16_t *ext = (uint16_t *)&work->data[20];
+	ext[0] = opt_vote;
+	ext[1] = le16dec(sctx->job.nreward);
+	//
+
 	pthread_mutex_unlock(&sctx->work_lock);
 
 	if (opt_debug) {

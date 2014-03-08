@@ -982,7 +982,7 @@ out:
 
 static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 {
-	const char *job_id, *prevhash, *coinb1, *coinb2, *version, *nbits, *ntime;
+	const char *job_id, *prevhash, *coinb1, *coinb2, *version, *nbits, *ntime, *nreward;
 	size_t coinb1_size, coinb2_size;
 	bool clean, ret = false;
 	int merkle_count, i;
@@ -1001,10 +1001,11 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 	nbits = json_string_value(json_array_get(params, 6));
 	ntime = json_string_value(json_array_get(params, 7));
 	clean = json_is_true(json_array_get(params, 8));
+	nreward = json_string_value(json_array_get(params, 9));
 
 	if (!job_id || !prevhash || !coinb1 || !coinb2 || !version || !nbits || !ntime ||
 	    strlen(prevhash) != 64 || strlen(version) != 8 ||
-	    strlen(nbits) != 8 || strlen(ntime) != 8) {
+	    strlen(nbits) != 8 || strlen(ntime) != 8 || strlen(nreward) != 4) {
 		applog(LOG_ERR, "Stratum notify: invalid parameters");
 		goto out;
 	}
@@ -1049,6 +1050,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 	hex2bin(sctx->job.version, version, 4);
 	hex2bin(sctx->job.nbits, nbits, 4);
 	hex2bin(sctx->job.ntime, ntime, 4);
+	hex2bin(sctx->job.nreward, nreward, 2);
 	sctx->job.clean = clean;
 
 	sctx->job.diff = sctx->next_diff;
