@@ -685,6 +685,9 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 		uint16_t *ext = (uint16_t *)&work->data[20];
 		ext[0] = opt_vote;
 		ext[1] = be16dec(sctx->job.nreward);
+
+		for (i = 0; i < 20; i++)
+			work->data[i] = be32dec((uint32_t *)&work->data[i]);
 	}
 	//
 
