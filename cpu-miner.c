@@ -40,6 +40,7 @@
 
 #define PROGRAM_NAME		"minerd"
 #define LP_SCANTIME		60
+#define HEAVYCOIN_BLKHDR_SZ		84
 
 #ifdef __linux /* Linux specific policy and affinity management */
 #include <sched.h>
@@ -641,10 +642,16 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 	memcpy(work->xnonce2, sctx->job.xnonce2, sctx->xnonce2_size);
 
 	/* Generate merkle root */
-	sha256d(merkle_root, sctx->job.coinbase, sctx->job.coinbase_size);
+	if (opt_algo == ALGO_HEAVY)
+		heavycoin_hash(merkle_root, sctx->job.coinbase, sctx->job.coinbase_size);
+	else
+		sha256d(merkle_root, sctx->job.coinbase, sctx->job.coinbase_size);
 	for (i = 0; i < sctx->job.merkle_count; i++) {
 		memcpy(merkle_root + 32, sctx->job.merkle[i], 32);
-		sha256d(merkle_root, merkle_root, 64);
+		if (opt_algo == ALGO_HEAVY)
+			heavycoin_hash(merkle_root, merkle_root, 64);
+		else
+			sha256d(merkle_root, merkle_root, 64);
 	}
 	
 	/* Increment extranonce2 */
@@ -819,7 +826,7 @@ static void *miner_thread(void *userdata)
                     // fprintf(stderr, "  vote'          = %u\n", ext[0]);
 
                     do {
-                        heavycoin_hash((unsigned char *)work.data, (unsigned char *)hash);
+                        heavycoin_hash((unsigned char *)hash, (unsigned char *)work.data, HEAVYCOIN_BLKHDR_SZ);
 
                         if (hash[7] <= work.target[7]) {
                             // fprintf(stderr, "Maybe found block\n");

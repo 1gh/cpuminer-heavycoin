@@ -6,8 +6,6 @@
 #include "sph_blake.h"
 #include "sph_groestl.h"
 
-#define HEAVYCOIN_BLKHDR_SZ 84
-
 /* Combines top 64-bits from each hash into a single hash */
 static void combine_hashes(uint32_t *out, uint32_t *hash1, uint32_t *hash2, uint32_t *hash3, uint32_t *hash4)
 {
@@ -28,10 +26,10 @@ static void combine_hashes(uint32_t *out, uint32_t *hash1, uint32_t *hash2, uint
     }
 }
 
-void heavycoin_hash(const char* input, char* output)
+void heavycoin_hash(unsigned char* output, const unsigned char* input, int len)
 {
     unsigned char hash1[32];
-    HEFTY1((unsigned char *)input, HEAVYCOIN_BLKHDR_SZ, hash1);
+    HEFTY1(input, len, hash1);
 
     /* HEFTY1 is new, so take an extra security measure to eliminate
      * the possiblity of collisions:
@@ -43,7 +41,7 @@ void heavycoin_hash(const char* input, char* output)
     unsigned char hash2[32];;
     SHA256_CTX ctx;
     SHA256_Init(&ctx);
-    SHA256_Update(&ctx, input, HEAVYCOIN_BLKHDR_SZ);
+    SHA256_Update(&ctx, input, len);
     SHA256_Update(&ctx, hash1, sizeof(hash1));
     SHA256_Final(hash2, &ctx);
 
@@ -56,21 +54,21 @@ void heavycoin_hash(const char* input, char* output)
     uint32_t hash3[16];
     sph_keccak512_context keccakCtx;
     sph_keccak512_init(&keccakCtx);
-    sph_keccak512(&keccakCtx, input, HEAVYCOIN_BLKHDR_SZ);
+    sph_keccak512(&keccakCtx, input, len);
     sph_keccak512(&keccakCtx, hash1, sizeof(hash1));
     sph_keccak512_close(&keccakCtx, (void *)&hash3);
 
     uint32_t hash4[16];
     sph_groestl512_context groestlCtx;
     sph_groestl512_init(&groestlCtx);
-    sph_groestl512(&groestlCtx, input, HEAVYCOIN_BLKHDR_SZ);
+    sph_groestl512(&groestlCtx, input, len);
     sph_groestl512(&groestlCtx, hash1, sizeof(hash1));
     sph_groestl512_close(&groestlCtx, (void *)&hash4);
 
     uint32_t hash5[16];
     sph_blake512_context blakeCtx;
     sph_blake512_init(&blakeCtx);
-    sph_blake512(&blakeCtx, input, HEAVYCOIN_BLKHDR_SZ);
+    sph_blake512(&blakeCtx, input, len);
     sph_blake512(&blakeCtx, (unsigned char *)&hash1, sizeof(hash1));
     sph_blake512_close(&blakeCtx, (void *)&hash5);
 
