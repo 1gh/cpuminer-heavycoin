@@ -809,7 +809,7 @@ static void *miner_thread(void *userdata)
                 case ALGO_HEAVY:
                 {
                     rc = 0;
-                    uint32_t hash[8] __attribute__((aligned(32)));
+                    DATA_ALIGN64(uint32_t hash[8]);
                     uint32_t start_nonce = work.data[19];
                     // fprintf(stderr, "Lets do some heavy mining!\n");
                     // fprintf(stderr, "  target = ");
@@ -841,9 +841,9 @@ static void *miner_thread(void *userdata)
                     // fprintf(stderr, "  vote'          = %u\n", ext[0]);
 
                     do {
-                        heavycoin_hash((unsigned char *)hash, (unsigned char *)work.data, HEAVYCOIN_BLKHDR_SZ);
+                        int v = heavycoin_scanhash((unsigned char *)hash, (unsigned char *)work.data, HEAVYCOIN_BLKHDR_SZ);
 
-                        if (hash[7] <= work.target[7]) {
+                        if (v && hash[7] <= work.target[7]) {
                             // fprintf(stderr, "Maybe found block\n");
                             if (fulltest(hash, work.target)) {
                                 // fprintf(stderr, "Definitely found block\n");

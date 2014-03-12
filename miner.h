@@ -62,6 +62,12 @@ enum {
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
+#if defined(__GNUC__)
+#define DATA_ALIGN64(x) x __attribute__ ((aligned(64)))
+#else
+#define DATA_ALIGN64(x) __declspec(align(64)) x
+#endif
+
 #if ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))
 #define WANT_BUILTIN_BSWAP
 #else
@@ -191,6 +197,7 @@ extern int scanhash_scrypt(int thr_id, uint32_t *pdata,
 	uint32_t max_nonce, unsigned long *hashes_done);
 
 extern void heavycoin_hash(unsigned char* output, const unsigned char* input, int len);
+extern int heavycoin_scanhash(unsigned char* output, const unsigned char* input, int len);
 
 struct thr_info {
 	int		id;

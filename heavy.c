@@ -1,6 +1,7 @@
 #include <string.h>
 #include <openssl/sha.h>
 
+#include "miner.h"
 #include "hefty1.h"
 #include "sph_keccak.h"
 #include "sph_blake.h"
@@ -24,6 +25,53 @@ static void combine_hashes(uint32_t *out, uint32_t *hash1, uint32_t *hash2, uint
             }
         }
     }
+}
+
+int heavycoin_scanhash(unsigned char* output, const unsigned char* input, int len)
+{
+    DATA_ALIGN64(unsigned char hash1[32]);
+    HEFTY1(input, len, hash1);
+
+    DATA_ALIGN64(uint32_t hash5[16]);
+    sph_blake512_context blakeCtx;
+    sph_blake512_init(&blakeCtx);
+    sph_blake512(&blakeCtx, input, len);
+    sph_blake512(&blakeCtx, (unsigned char *)&hash1, sizeof(hash1));
+    sph_blake512_close(&blakeCtx, (void *)&hash5);
+    if ((*((unsigned char *)hash5 + 31) & 0xF0) != 0)
+        return 0;
+
+    DATA_ALIGN64(unsigned char hash2[32]);
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, input, len);
+    SHA256_Update(&ctx, hash1, sizeof(hash1));
+    SHA256_Final(hash2, &ctx);
+    if ((*((unsigned char *)hash2 + 31) & 0xF0) != 0)
+        return 0;
+
+    DATA_ALIGN64(uint32_t hash3[16]);
+    sph_keccak512_context keccakCtx;
+    sph_keccak512_init(&keccakCtx);
+    sph_keccak512(&keccakCtx, input, len);
+    sph_keccak512(&keccakCtx, hash1, sizeof(hash1));
+    sph_keccak512_close(&keccakCtx, (void *)&hash3);
+    if ((*((unsigned char *)hash3 + 31) & 0xF0) != 0)
+        return 0;
+
+    DATA_ALIGN64(uint32_t hash4[16]);
+    sph_groestl512_context groestlCtx;
+    sph_groestl512_init(&groestlCtx);
+    sph_groestl512(&groestlCtx, input, len);
+    sph_groestl512(&groestlCtx, hash1, sizeof(hash1));
+    sph_groestl512_close(&groestlCtx, (void *)&hash4);
+    if ((*((unsigned char *)hash4 + 31) & 0xF0) != 0)
+        return 0;
+
+    uint32_t *final = (uint32_t *)output;
+    combine_hashes(final, (uint32_t *)hash2, hash3, hash4, hash5);
+
+    return 1;
 }
 
 void heavycoin_hash(unsigned char* output, const unsigned char* input, int len)
